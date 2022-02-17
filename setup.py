@@ -80,7 +80,7 @@ for service_name in [
     extras_per_service[service_name] = []
 extras_per_service.update(
     {
-        "apigateway": [_dep_python_jose, _dep_python_jose_ecdsa_pin],
+        "apigateway": [_dep_PyYAML, _dep_python_jose, _dep_python_jose_ecdsa_pin],
         "apigatewayv2": [_dep_PyYAML],
         "appsync": [_dep_graphql],
         "awslambda": [_dep_docker],
@@ -129,6 +129,7 @@ setup(
     url="https://github.com/spulec/moto",
     entry_points={"console_scripts": ["moto_server = moto.server:main"]},
     packages=find_packages(exclude=("tests", "tests.*")),
+    python_requires=">=3.6",
     install_requires=install_requires,
     extras_require=extras_require,
     include_package_data=True,

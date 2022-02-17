@@ -217,7 +217,11 @@ DEFAULT_VPC_ENDPOINT_SERVICES = []
 
 
 def utc_date_and_time():
-    return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    x = datetime.utcnow()
+    # Better performing alternative to x.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    return "{}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.000Z".format(
+        x.year, x.month, x.day, x.hour, x.minute, x.second
+    )
 
 
 def validate_resource_ids(resource_ids):
@@ -1155,14 +1159,15 @@ class InstanceBackend(object):
                         "DeleteOnTermination", False
                     )
                     kms_key_id = block_device["Ebs"].get("KmsKeyId")
-                    new_instance.add_block_device(
-                        volume_size,
-                        device_name,
-                        snapshot_id,
-                        encrypted,
-                        delete_on_termination,
-                        kms_key_id,
-                    )
+                    if block_device.get("NoDevice") != "":
+                        new_instance.add_block_device(
+                            volume_size,
+                            device_name,
+                            snapshot_id,
+                            encrypted,
+                            delete_on_termination,
+                            kms_key_id,
+                        )
             else:
                 new_instance.setup_defaults()
             if kwargs.get("instance_market_options"):
@@ -5476,13 +5481,11 @@ class VPCEndPoint(TaggedEC2Resource):
         self.add_tags(tags or {})
         self.destination_prefix_list_id = destination_prefix_list_id
 
+        self.created_at = utc_date_and_time()
+
     @property
     def owner_id(self):
         return ACCOUNT_ID
-
-    @property
-    def created_at(self):
-        return utc_date_and_time()
 
 
 class ManagedPrefixList(TaggedEC2Resource):
@@ -8639,6 +8642,20 @@ class EC2Backend(
     IamInstanceProfileAssociationBackend,
     CarrierGatewayBackend,
 ):
+    """
+    Implementation of the AWS EC2 endpoint.
+
+    moto includes a limited set of AMIs in `moto/ec2/resources/amis.json`.  If you require specific
+    AMIs to be available during your tests, you can provide your own AMI definitions by setting the
+    environment variable `MOTO_AMIS_PATH` to point to a JSON file containing definitions of the
+    required AMIs.
+
+    To create such a file, refer to `scripts/get_amis.py`
+
+    .. note:: You must set `MOTO_AMIS_PATH` before importing moto.
+
+    """
+
     def __init__(self, region_name):
         self.region_name = region_name
         super().__init__()
